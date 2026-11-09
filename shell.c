@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <errno.h>
 
 #define BSIZE 256
 
@@ -31,7 +32,22 @@ int main(int argc, char *argv[]){
 
     while(1){
         printf("shell> ");
-        fgets(buffer,BSIZE,stdin);
+        fflush(stdout);
+        if (fgets(buffer,BSIZE,stdin) == NULL) {
+            if (feof(stdin)) {
+                break;
+            }
+
+            if (ferror(stdin)) {
+                if (errno == EINTR) {
+                    clearerr(stdin);
+                    continue; // Interrupted by signal, prompt again
+                } else {
+                    perror("Error reading input");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        };
         buffer[(strlen(buffer)-1)]='\0';  //Remove NewLine
 
         char *token = strtok(buffer," \n");
@@ -43,7 +59,6 @@ int main(int argc, char *argv[]){
             i++;
         }
         args[i] = NULL;
-
         //** Internal Command **
         if (args[0] == NULL) {
             continue; // No command entered, prompt again
